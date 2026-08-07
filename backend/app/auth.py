@@ -39,11 +39,11 @@ def get_current_user(
         )
 
     try:
+        # The backend signs its own session JWTs (see otp_auth.issue_jwt).
         payload = jwt.decode(
             creds.credentials,
-            settings.supabase_jwt_secret,
+            settings.auth_jwt_secret,
             algorithms=["HS256"],
-            audience="authenticated",
         )
     except jwt.PyJWTError:
         raise HTTPException(

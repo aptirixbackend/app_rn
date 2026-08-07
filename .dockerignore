@@ -1,0 +1,18 @@
+# Root build context for the backend image — exclude everything the image
+# doesn't need, and any secrets.
+mobile/
+docs/
+images/
+supabase/
+.github/
+.git/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.env
+!**/.env.example
+mobile/env.json
+key.json
+*.jks
+*.keystore
+backend/scripts/

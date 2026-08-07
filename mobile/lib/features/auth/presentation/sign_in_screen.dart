@@ -48,10 +48,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     }
     final phone = '+91$digits';
     if (useRealAuth) {
-      // Ask Supabase to send the code (delivered by the Plivo hook).
+      // Backend generates the code and delivers it over Plivo WhatsApp.
       setState(() => _loading = true);
       try {
-        await ref.read(authServiceProvider).sendPhoneOtp(phone);
+        await ref.read(authServiceProvider).requestOtp(phone);
       } catch (_) {
         if (mounted) setState(() => _loading = false);
         _snack('Could not send the code. Please try again.');
@@ -64,14 +64,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   Future<void> _continueWithGoogle() async {
     if (useRealAuth) {
-      setState(() => _loading = true);
-      try {
-        // OAuth redirect; the router's auth listener routes on completion.
-        await ref.read(authServiceProvider).signInWithGoogle();
-      } catch (_) {
-        _snack('Google sign-in failed. Please try again.');
-      }
-      if (mounted) setState(() => _loading = false);
+      _snack('Google sign-in is coming soon — please continue with your mobile number.');
       return;
     }
     // Mock fallback (demo mode).
@@ -240,8 +233,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       : const Text('Continue with Mobile'),
                 ),
                 const SizedBox(height: 14),
-                _demoCard(),
-                const SizedBox(height: 18),
+                if (!useRealAuth) ...[
+                  _demoCard(),
+                  const SizedBox(height: 18),
+                ],
                 _orDivider(),
                 const SizedBox(height: 18),
                 OutlinedButton(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/mock_auth.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
@@ -597,7 +598,8 @@ class ProfileScreen extends ConsumerWidget {
   Widget _logout(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: () async {
-        await ref.read(mockAuthProvider).logout();
+        // Clears the backend JWT and the local session together.
+        await ref.read(authServiceProvider).signOut();
         ref.invalidate(userRoleProvider);
         ref.invalidate(userNameProvider);
         if (context.mounted) context.go('/sign-in');

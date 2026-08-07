@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../auth/token_store.dart';
 import '../config/env.dart';
 
-/// Dio client for the FastAPI backend. Automatically attaches the current
-/// Supabase access token so protected endpoints (/me, /properties, ...) work.
+/// Dio client for the FastAPI backend. Attaches the backend-issued session JWT
+/// (from [TokenStore]) so protected endpoints (/auth/session, owner writes, …)
+/// work. When there's no token yet, requests go unauthenticated and the backend
+/// treats them as the demo owner while the app is still in mock mode.
 final apiClientProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
@@ -18,14 +20,10 @@ final apiClientProvider = Provider<Dio>((ref) {
 
   dio.interceptors.add(
     InterceptorsWrapper(
-      onRequest: (options, handler) {
-        String? token;
-        try {
-          token = Supabase.instance.client.auth.currentSession?.accessToken;
-        } catch (_) {
-          token = null; // Supabase not initialized yet
-        }
-        if (token != null) {
+      onRequest: (options, handler) async {
+        final store = ref.read(tokenStoreProvider);
+        final token = store.cached ?? await store.read();
+        if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);

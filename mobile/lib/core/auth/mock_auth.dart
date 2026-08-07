@@ -88,6 +88,17 @@ class MockAuth {
     await p.setString(_kPhone, phone);
   }
 
+  /// Bind the local session to the backend-authenticated user: the user id
+  /// becomes the backend's uuid (so favorites/leads/visits key off the real
+  /// user), and phone/name are cached for the profile UI.
+  Future<void> setSession({String? userId, String? phone, String? name}) async {
+    final p = await _prefs;
+    await p.setBool(_kLoggedIn, true);
+    if (userId != null && userId.isNotEmpty) await p.setString(_kUserId, userId);
+    if (phone != null && phone.isNotEmpty) await p.setString(_kPhone, phone);
+    if (name != null && name.isNotEmpty) await p.setString(_kName, name);
+  }
+
   Future<void> setGoal(String goal) async =>
       (await _prefs).setString(_kGoal, goal);
 

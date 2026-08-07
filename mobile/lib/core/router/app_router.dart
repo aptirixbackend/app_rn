@@ -1,12 +1,6 @@
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../auth/auth_config.dart';
-import '../config/env.dart';
 import '../../features/auth/presentation/otp_verification_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
 import '../../features/browse/presentation/segment_landing_screen.dart';
@@ -43,27 +37,8 @@ import '../../features/support/presentation/refer_earn_screen.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   String? idFrom(GoRouterState state) => state.extra as String?;
 
-  // Real-auth session guard. Fully inert (null redirect/listenable) unless
-  // real auth is switched on AND Supabase is configured, so the mock demo is
-  // unaffected.
-  final realAuth = useRealAuth && Env.hasSupabase;
-
   return GoRouter(
     initialLocation: '/',
-    refreshListenable: realAuth
-        ? GoRouterRefreshStream(
-            Supabase.instance.client.auth.onAuthStateChange)
-        : null,
-    redirect: (context, state) {
-      if (!realAuth) return null;
-      final loggedIn =
-          Supabase.instance.client.auth.currentSession != null;
-      final loc = state.matchedLocation;
-      const authLocs = {'/', '/sign-in', '/verify-otp'};
-      if (!loggedIn && !authLocs.contains(loc)) return '/sign-in';
-      if (loggedIn && (loc == '/sign-in' || loc == '/')) return '/home';
-      return null;
-    },
     routes: [
       GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
       GoRoute(
@@ -211,20 +186,3 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
-
-/// Bridges a stream (e.g. Supabase auth state) to go_router's refresh signal so
-/// redirects re-run when the user signs in or out.
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _sub = stream.asBroadcastStream().listen((_) => notifyListeners());
-  }
-
-  late final StreamSubscription<dynamic> _sub;
-
-  @override
-  void dispose() {
-    _sub.cancel();
-    super.dispose();
-  }
-}

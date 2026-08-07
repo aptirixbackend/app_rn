@@ -96,20 +96,18 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     final auth = ref.read(mockAuthProvider);
 
     if (useRealAuth) {
-      // Supabase verifies the code it generated (Plivo only delivered it).
+      // Backend verifies the code and returns the session JWT.
       setState(() => _loading = true);
+      final bool onboarded;
       try {
-        await ref
+        onboarded = await ref
             .read(authServiceProvider)
-            .verifyPhoneOtp(widget.phoneE164, _code);
+            .verifyOtp(widget.phoneE164, _code);
       } catch (_) {
-        setState(() => _loading = false);
+        if (mounted) setState(() => _loading = false);
         _flagWrongOtp('Invalid or expired code. Please try again.');
         return;
       }
-      // Keep the local profile bits the rest of the app still reads in sync.
-      await auth.login(widget.phoneE164);
-      final onboarded = await auth.isOnboarded();
       ref
         ..invalidate(userRoleProvider)
         ..invalidate(userNameProvider);
@@ -140,6 +138,17 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
   Future<void> _resend() async {
     if (_secondsLeft > 0) return;
+    if (useRealAuth) {
+      try {
+        await ref.read(authServiceProvider).requestOtp(widget.phoneE164);
+      } catch (_) {
+        _snack('Could not resend the code. Please try again.');
+        return;
+      }
+      _snack('Code re-sent on WhatsApp.');
+      _startCountdown();
+      return;
+    }
     _snack('OTP resent. For testing, use 123456.');
     _startCountdown();
   }
@@ -203,19 +212,22 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                   onCompleted: (_) => _verify(),
                 ),
               ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(10),
+              if (!useRealAuth) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('Demo mode — enter OTP  123456',
+                      style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.primary)),
                 ),
-                child: Text('Demo mode — enter OTP  123456',
-                    style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.primary)),
-              ),
+              ],
               const SizedBox(height: 16),
               _resendRow(),
               const Spacer(),

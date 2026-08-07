@@ -1,37 +1,57 @@
-import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+import '../network/api_client.dart';
+import 'mock_auth.dart';
+import 'token_store.dart';
 
-/// Real Supabase-backed auth, used only when [useRealAuth] is on.
-///
-/// Phone OTP is **generated and verified by Supabase**; delivery is handled by
-/// the Plivo "Send OTP" auth hook (WhatsApp with SMS fallback) — see the
-/// `supabase/functions/send-otp` edge function. Google uses the OAuth redirect
-/// flow, which works on both web and mobile with a single web client ID.
+final authServiceProvider = Provider<AuthService>((ref) => AuthService(
+      ref.read(apiClientProvider),
+      ref.read(tokenStoreProvider),
+      ref.read(mockAuthProvider),
+    ));
+
+/// Backend-owned auth. The FastAPI backend generates the OTP, delivers it over
+/// Plivo WhatsApp, verifies it, and returns a session JWT — no Supabase Auth.
+/// On success the JWT is persisted (attached to every backend request) and the
+/// local session cache is populated so the rest of the app keeps working.
 class AuthService {
-  SupabaseClient get _c => Supabase.instance.client;
+  AuthService(this._api, this._tokens, this._mock);
+  final Dio _api;
+  final TokenStore _tokens;
+  final MockAuth _mock;
 
-  Session? get session => _c.auth.currentSession;
-  Stream<AuthState> get onAuthChange => _c.auth.onAuthStateChange;
+  /// Step 1 — ask the backend to send a code to [phoneE164] (e.g. +919876543210).
+  Future<void> requestOtp(String phoneE164) async {
+    await _api.post('/auth/request-otp', data: {'phone': phoneE164});
+  }
 
-  /// Ask Supabase to send a login code to [phoneE164] (e.g. `+919876543210`).
-  Future<void> sendPhoneOtp(String phoneE164) =>
-      _c.auth.signInWithOtp(phone: phoneE164);
+  /// Step 2 — verify the code. Returns whether the user has finished onboarding.
+  /// Throws (Dio 401) on a wrong/expired code so the caller can shake the field.
+  Future<bool> verifyOtp(String phoneE164, String code) async {
+    final res = await _api.post(
+      '/auth/verify-otp',
+      data: {'phone': phoneE164, 'code': code},
+    );
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final token = data['access_token'] as String?;
+    final user = data['user'] is Map
+        ? Map<String, dynamic>.from(data['user'] as Map)
+        : <String, dynamic>{};
+    if (token == null || token.isEmpty) {
+      throw StateError('No session token returned');
+    }
+    await _tokens.write(token);
+    await _mock.setSession(
+      userId: user['id']?.toString(),
+      phone: user['phone']?.toString() ?? phoneE164,
+      name: user['name']?.toString(),
+    );
+    return (user['onboarded'] as bool?) ?? false;
+  }
 
-  /// Verify the 6-digit code the user typed.
-  Future<AuthResponse> verifyPhoneOtp(String phoneE164, String token) =>
-      _c.auth.verifyOTP(type: OtpType.sms, phone: phoneE164, token: token);
-
-  /// Google OAuth. On web this redirects the current tab; on mobile it opens a
-  /// browser tab and returns via the [redirectTo] deep link. Completion is
-  /// picked up by the router's auth-state listener.
-  Future<bool> signInWithGoogle() => _c.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo:
-            kIsWeb ? null : 'com.realestate.homevista://login-callback',
-      );
-
-  Future<void> signOut() => _c.auth.signOut();
+  Future<void> signOut() async {
+    await _tokens.write(null);
+    await _mock.logout();
+  }
 }

@@ -18,19 +18,27 @@ gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
 gcloud artifacts repositories create homevista \
   --repository-format=docker --location=$REGION
 
-# 3) store the Supabase secrets in Secret Manager (paste values when prompted)
-printf '%s' 'YOUR_SUPABASE_SERVICE_KEY' | gcloud secrets create SUPABASE_SERVICE_KEY --data-file=-
-printf '%s' 'YOUR_SUPABASE_JWT_SECRET' | gcloud secrets create SUPABASE_JWT_SECRET --data-file=-
+# 3) store the runtime secrets in Secret Manager (paste values when prompted)
+printf '%s' 'YOUR_SUPABASE_SERVICE_KEY'  | gcloud secrets create SUPABASE_SERVICE_KEY --data-file=-
+printf '%s' 'A_LONG_RANDOM_STRING'       | gcloud secrets create AUTH_JWT_SECRET      --data-file=-   # signs app session JWTs
+printf '%s' 'YOUR_PLIVO_AUTH_ID'         | gcloud secrets create PLIVO_AUTH_ID        --data-file=-
+printf '%s' 'YOUR_PLIVO_AUTH_TOKEN'      | gcloud secrets create PLIVO_AUTH_TOKEN     --data-file=-
 
 # 4) let Cloud Run's runtime service account read those secrets
 PROJ_NUM=$(gcloud projects describe YOUR_PROJECT_ID --format='value(projectNumber)')
-gcloud secrets add-iam-policy-binding SUPABASE_SERVICE_KEY \
-  --member="serviceAccount:${PROJ_NUM}-compute@developer.gserviceaccount.com" \
-  --role=roles/secretmanager.secretAccessor
-gcloud secrets add-iam-policy-binding SUPABASE_JWT_SECRET \
-  --member="serviceAccount:${PROJ_NUM}-compute@developer.gserviceaccount.com" \
-  --role=roles/secretmanager.secretAccessor
+SA_RUNTIME="${PROJ_NUM}-compute@developer.gserviceaccount.com"
+for S in SUPABASE_SERVICE_KEY AUTH_JWT_SECRET PLIVO_AUTH_ID PLIVO_AUTH_TOKEN; do
+  gcloud secrets add-iam-policy-binding "$S" \
+    --member="serviceAccount:${SA_RUNTIME}" --role=roles/secretmanager.secretAccessor
+done
 ```
+
+### Full env the service runs with
+Plain vars (set by the workflow): `SUPABASE_URL`, `CORS_ORIGINS=*`, `ALLOW_DEMO_AUTH=true`,
+`PLIVO_WHATSAPP_SRC=918035397000`, `WA_TEMPLATE_NAME=otp`, `WA_TEMPLATE_LANG=en`.
+Secrets (Secret Manager): `SUPABASE_SERVICE_KEY`, `AUTH_JWT_SECRET`, `PLIVO_AUTH_ID`, `PLIVO_AUTH_TOKEN`.
+Generate a strong `AUTH_JWT_SECRET`, e.g. `openssl rand -hex 32`. At real-auth cutover set
+`ALLOW_DEMO_AUTH=false`.
 
 ## Deploy-from-GitHub service account (for the Actions workflow)
 

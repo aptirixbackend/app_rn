@@ -1,10 +1,9 @@
-/// Master switch for real Supabase auth (Google Sign-In + phone OTP delivered
-/// by Plivo). While this is `false` the app keeps using the local mock OTP
-/// (`123456`) so the demo works with no backend auth configured.
+/// Master switch for real, backend-owned auth (phone OTP delivered by Plivo
+/// WhatsApp and verified by the FastAPI backend, which issues the session JWT).
 ///
-/// Turn it on at go-live by building with:
+/// While this is `false` the app uses the local mock OTP (`123456`) so the demo
+/// works with no backend reachable. Turn it on for production builds with:
 ///   --dart-define=USE_REAL_AUTH=true
-/// once the Google provider and the Plivo Send-OTP hook are set up in the
-/// Supabase dashboard (see docs/auth-setup.md).
+/// (the backend must be deployed and `API_BASE_URL` must point at it).
 const bool useRealAuth =
     bool.fromEnvironment('USE_REAL_AUTH', defaultValue: false);
