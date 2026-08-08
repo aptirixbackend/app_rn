@@ -7,3 +7,12 @@
 /// (the backend must be deployed and `API_BASE_URL` must point at it).
 const bool useRealAuth =
     bool.fromEnvironment('USE_REAL_AUTH', defaultValue: false);
+
+/// Google Web OAuth client id — the backend verifies Google ID tokens were
+/// issued for this client. Public identifier, safe to ship. Override per build
+/// with --dart-define=GOOGLE_WEB_CLIENT_ID=...
+const String googleWebClientId = String.fromEnvironment(
+  'GOOGLE_WEB_CLIENT_ID',
+  defaultValue:
+      '610696728606-a4f39l0hkrv1jeas39kmpsuvq713sjsd.apps.googleusercontent.com',
+);

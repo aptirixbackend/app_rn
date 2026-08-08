@@ -71,7 +71,7 @@ class HelpSupportScreen extends StatelessWidget {
                           AppColors.primarySoft),
                       const SizedBox(width: 10),
                       _contact(context, Icons.mail_outline_rounded, 'Email',
-                          'Email support@homevista.app', AppColors.prefOrange,
+                          'Email support@rentorent.app', AppColors.prefOrange,
                           AppColors.prefOrangeBg),
                     ],
                   ),
@@ -102,7 +102,7 @@ class HelpSupportScreen extends StatelessWidget {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () => _snack(
-                          context, 'Email us at support@homevista.app'),
+                          context, 'Email us at support@rentorent.app'),
                       icon: const Icon(Icons.support_agent_rounded, size: 20),
                       label: const Text('Contact Support Team'),
                     ),

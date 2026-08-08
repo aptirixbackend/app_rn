@@ -7,6 +7,8 @@ import re
 import secrets
 
 import jwt
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 
 from .config import settings
 from .database import get_supabase
@@ -103,6 +105,68 @@ def upsert_user(phone: str) -> dict:
         return r.data[0]
     ins = sb.table("profiles_home").insert({"phone": phone}).execute()
     return ins.data[0]
+
+
+def verify_google_token(token: str) -> dict | None:
+    """Verify a Google ID token was issued for our Web client, and return its
+    claims (email, name, picture, …) or None if invalid."""
+    if not settings.google_client_id:
+        return None
+    try:
+        return google_id_token.verify_oauth2_token(
+            token, google_requests.Request(), settings.google_client_id
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def upsert_user_by_email(email: str, name: str | None, avatar: str | None) -> dict:
+    """Find a user by email or create one (Google Sign-In). Backend-owned, so no
+    Supabase Auth involvement."""
+    sb = get_supabase()
+    r = (
+        sb.table("profiles_home")
+        .select("*")
+        .eq("email", email)
+        .limit(1)
+        .execute()
+    )
+    if r.data:
+        return r.data[0]
+    row: dict = {"email": email}
+    if name:
+        row["first_name"] = name
+    if avatar:
+        row["avatar_url"] = avatar
+    ins = sb.table("profiles_home").insert(row).execute()
+    return ins.data[0]
+
+
+def phone_in_use(phone: str, exclude_user_id: str) -> bool:
+    """True if [phone] already belongs to a different user."""
+    sb = get_supabase()
+    r = (
+        sb.table("profiles_home")
+        .select("id")
+        .eq("phone", phone)
+        .neq("id", exclude_user_id)
+        .limit(1)
+        .execute()
+    )
+    return bool(r.data)
+
+
+def set_user_phone(user_id: str, phone: str) -> dict:
+    sb = get_supabase()
+    sb.table("profiles_home").update({"phone": phone}).eq("id", user_id).execute()
+    r = (
+        sb.table("profiles_home")
+        .select("*")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
+    return r.data[0] if r.data else {}
 
 
 def issue_jwt(user_id: str, phone: str) -> str:

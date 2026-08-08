@@ -14,7 +14,7 @@ const _steps = <(IconData, String, String)>[
   (
     Icons.person_add_alt_1_rounded,
     'They sign up',
-    'Your friend joins HomeVista and completes their first enquiry or listing.'
+    'Your friend joins RentoRent and completes their first enquiry or listing.'
   ),
   (
     Icons.card_giftcard_rounded,

@@ -26,6 +26,19 @@ def get_me(user: dict = Depends(get_current_user)):
     }
 
 
+_PROFILE_COLS = {"avatar_url", "first_name", "last_name", "email", "phone"}
+
+
+@router.patch("/me")
+def update_me(payload: dict, user: dict = Depends(get_current_user)):
+    """Update the current user's profile (avatar photo, name, …)."""
+    sb = get_supabase()
+    data = {k: v for k, v in (payload or {}).items() if k in _PROFILE_COLS}
+    if data:
+        sb.table("profiles_home").update(data).eq("id", user["id"]).execute()
+    return {"ok": True}
+
+
 @router.post("/onboarding/goal")
 def set_goal(payload: GoalIn, user: dict = Depends(get_current_user)):
     """Save the primary goal ('post' | 'search')."""

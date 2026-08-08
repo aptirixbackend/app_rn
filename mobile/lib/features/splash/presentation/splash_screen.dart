@@ -71,7 +71,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               Icon(Icons.holiday_village_rounded, size: 72, color: Colors.white),
               SizedBox(height: 16),
               Text(
-                'HomeVista',
+                'RentoRent',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 28,

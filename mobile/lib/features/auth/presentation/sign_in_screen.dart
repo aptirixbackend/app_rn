@@ -64,7 +64,22 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   Future<void> _continueWithGoogle() async {
     if (useRealAuth) {
-      _snack('Google sign-in is coming soon — please continue with your mobile number.');
+      setState(() => _loading = true);
+      try {
+        final user = await ref.read(authServiceProvider).signInWithGoogle();
+        if (!mounted) return;
+        setState(() => _loading = false);
+        if (user == null) return; // user cancelled the picker
+        if (user['needs_phone'] == true) {
+          // First-time Google user — verify a phone before Home.
+          context.push('/verify-phone');
+          return;
+        }
+        context.go((user['onboarded'] == true) ? '/home' : '/onboarding');
+      } catch (_) {
+        if (mounted) setState(() => _loading = false);
+        _snack('Google sign-in failed. Please try again.');
+      }
       return;
     }
     // Mock fallback (demo mode).
@@ -131,7 +146,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           ),
           alignment: Alignment.center,
           child: Text(
-            'H',
+            'R',
             style: GoogleFonts.poppins(
               color: Colors.white,
               fontSize: 22,
@@ -145,7 +160,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'HOMELY',
+              'RentoRent',
               style: GoogleFonts.poppins(
                 color: AppColors.ink,
                 fontSize: 18,

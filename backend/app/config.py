@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     auth_jwt_secret: str = "dev-insecure-change-me"
     auth_token_days: int = 30
     otp_ttl_seconds: int = 600       # code valid for 10 minutes
+    # Google Sign-In: the Web OAuth client id the mobile app requests tokens for.
+    google_client_id: str = ""
     otp_max_attempts: int = 5        # wrong tries before a code is dead
     otp_resend_seconds: int = 30     # min gap between sends to one number
 

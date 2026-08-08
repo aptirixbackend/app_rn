@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -85,6 +86,81 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
+  }
+
+  /// Copy a shareable summary of the listing to the clipboard.
+  Future<void> _share(PropertyView v) async {
+    final text =
+        '${v.title}\n${v.priceLabel} · ${v.location}\nShared via RentoRent';
+    await Clipboard.setData(ClipboardData(text: text));
+    _snack('Property details copied — paste anywhere to share');
+  }
+
+  /// Bottom sheet listing every amenity (the "View all" action).
+  void _showAmenities(PropertyView v) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                      color: AppColors.boxBorder,
+                      borderRadius: BorderRadius.circular(3)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('All Amenities',
+                  style: GoogleFonts.poppins(
+                      fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 14),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final a in v.amenities)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(_amenityIcon(a),
+                                  size: 16, color: AppColors.primary),
+                              const SizedBox(width: 7),
+                              Text(a,
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _snack(String m) {
@@ -262,9 +338,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 style:
                     GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
                 children: const [
-                  TextSpan(text: 'Home', style: TextStyle(color: AppColors.ink)),
+                  TextSpan(text: 'Rento', style: TextStyle(color: AppColors.ink)),
                   TextSpan(
-                      text: 'Vista', style: TextStyle(color: AppColors.primary)),
+                      text: 'Rent', style: TextStyle(color: AppColors.primary)),
                 ],
               )),
               Text('Find your perfect space',
@@ -281,7 +357,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                       : Icons.favorite_border_rounded,
                   color: isFav ? Colors.red : AppColors.ink)),
           IconButton(
-              onPressed: _soon,
+              onPressed: () => _share(v),
               icon: const Icon(Icons.ios_share_rounded,
                   color: AppColors.ink, size: 20)),
         ],
@@ -838,7 +914,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHead('Amenities', action: 'View all'),
+        _sectionHead('Amenities',
+            action: v.amenities.length > 8 ? 'View all' : null,
+            onTap: () => _showAmenities(v)),
         const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 4,

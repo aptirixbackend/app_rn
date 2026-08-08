@@ -70,6 +70,8 @@ class PropertyRepository {
     required String purpose,
     String? city,
     String? area,
+    num? latitude,
+    num? longitude,
     String? bhk,
     int? bathrooms,
     num? carpetArea,
@@ -86,6 +88,8 @@ class PropertyRepository {
       'purpose': purpose,
       'city': city,
       'area': area,
+      'latitude': latitude,
+      'longitude': longitude,
       'bhk': bhk,
       'bathrooms': bathrooms,
       'carpet_area': carpetArea,
@@ -208,6 +212,18 @@ class PropertyRepository {
             .eq('id', _ownerId)
             .maybeSingle();
       },
+    );
+  }
+
+  /// Update the current user's profile (avatar, name, …). Goes through the
+  /// backend (service key) since profiles_home isn't anon-writable.
+  Future<void> updateMyProfile(Map<String, dynamic> fields) {
+    final body = {...fields}..removeWhere((_, v) => v == null);
+    if (body.isEmpty) return Future.value();
+    return apiOrDirect(
+      () async => _api.patch('/me', data: body),
+      () async =>
+          _client.from('profiles_home').update(body).eq('id', _ownerId),
     );
   }
 

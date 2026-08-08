@@ -64,7 +64,7 @@ async function sendSms(dst: string, otp: string): Promise<boolean> {
   return plivo({
     src: SMS_SRC,
     dst,
-    text: `${otp} is your HomeVista verification code. Valid for 10 minutes.`,
+    text: `${otp} is your RentoRent verification code. Valid for 10 minutes.`,
   });
 }
 

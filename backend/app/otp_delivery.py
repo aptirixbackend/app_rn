@@ -61,7 +61,7 @@ async def _send_sms(dst: str, otp: str) -> bool:
     return await _plivo_post({
         "src": settings.plivo_sms_src,
         "dst": dst,
-        "text": f"{otp} is your verification code. Valid for 10 minutes.",
+        "text": f"{otp} is your RentoRent verification code. Valid for 10 minutes.",
     })
 
 

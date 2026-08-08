@@ -119,9 +119,9 @@ class GoalSelectionScreen extends ConsumerWidget {
               fontWeight: FontWeight.w700,
             ),
             children: const [
-              TextSpan(text: 'Home', style: TextStyle(color: AppColors.ink)),
+              TextSpan(text: 'Rento', style: TextStyle(color: AppColors.ink)),
               TextSpan(
-                  text: 'Vista', style: TextStyle(color: AppColors.primary)),
+                  text: 'Rent', style: TextStyle(color: AppColors.primary)),
             ],
           ),
         ),

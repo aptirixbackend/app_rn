@@ -192,7 +192,7 @@ class PropertyFilter {
     this.gender,
     this.stayType = const {},
     this.guests,
-    this.area,
+    this.areas = const {},
     this.sort = 'relevance',
   });
 
@@ -227,7 +227,7 @@ class PropertyFilter {
   final String? gender; // PG: 'Men' | 'Women' | 'Co-ed'
   final Set<String> stayType; // Stay: Entire House / Private Room / … (multi)
   final String? guests; // Stay: min guests ('1'..'4+')
-  final String? area; // locality within the city (Home locality chips)
+  final Set<String> areas; // localities within the city (multi-select)
   final String sort;
 
   _Seg get _cfg => _segments[segment]!;
@@ -249,7 +249,7 @@ class PropertyFilter {
       gender != null ||
       stayType.isNotEmpty ||
       guests != null ||
-      area != null;
+      areas.isNotEmpty;
 
   // ---- labels for header chips / titles ----------------------------------
   String get segmentLabel =>
@@ -277,7 +277,7 @@ class PropertyFilter {
     Object? gender = _sentinel,
     Set<String>? stayType,
     Object? guests = _sentinel,
-    Object? area = _sentinel,
+    Set<String>? areas,
     String? sort,
   }) =>
       PropertyFilter(
@@ -293,7 +293,7 @@ class PropertyFilter {
         gender: gender == _sentinel ? this.gender : gender as String?,
         stayType: stayType ?? this.stayType,
         guests: guests == _sentinel ? this.guests : guests as String?,
-        area: area == _sentinel ? this.area : area as String?,
+        areas: areas ?? this.areas,
         sort: sort ?? this.sort,
       );
 
@@ -334,9 +334,10 @@ class PropertyFilter {
         final have = int.tryParse(v.maxGuests) ?? 0;
         if (have < want) return false;
       }
-      if (area != null &&
-          (v.raw['area'] ?? '').toString().toLowerCase() !=
-              area!.toLowerCase()) {
+      if (areas.isNotEmpty &&
+          !areas
+              .map((e) => e.toLowerCase())
+              .contains((v.raw['area'] ?? '').toString().toLowerCase())) {
         return false;
       }
       return true;
@@ -400,7 +401,9 @@ class PropertyFilter {
       out.add((s, copyWith(stayType: {...stayType}..remove(s))));
     }
     if (guests != null) out.add(('$guests Guests', copyWith(guests: null)));
-    if (area != null) out.add((area!, copyWith(area: null)));
+    for (final a in areas) {
+      out.add((a, copyWith(areas: {...areas}..remove(a))));
+    }
     return out;
   }
 }
@@ -458,7 +461,8 @@ Future<String?> showSortSheet(BuildContext context, String current) {
 /// Full filter bottom sheet (99acres / Housing style) — returns the new filter
 /// on Apply (or null if dismissed).
 Future<PropertyFilter?> showFilterSheet(
-    BuildContext context, PropertyFilter current) {
+    BuildContext context, PropertyFilter current,
+    {List<String> localities = const []}) {
   var seg = current.segment;
   var commPurpose = current.commercialPurpose;
   var priceIdx = current.priceIdx;
@@ -470,6 +474,7 @@ Future<PropertyFilter?> showFilterSheet(
   String? gender = current.gender;
   var stayType = {...current.stayType};
   String? guests = current.guests;
+  var areas = {...current.areas};
 
   return showModalBottomSheet<PropertyFilter>(
     context: context,
@@ -570,6 +575,7 @@ Future<PropertyFilter?> showFilterSheet(
                           gender = null;
                           stayType = {};
                           guests = null;
+                          areas = {};
                           commPurpose = 'rent';
                         }),
                         child: Text('Reset',
@@ -633,6 +639,17 @@ Future<PropertyFilter?> showFilterSheet(
                           style: GoogleFonts.poppins(
                               fontSize: 11.5, color: AppColors.inkSoft)),
                     ),
+
+                  // ---- Locality (multi-select within the city) ---------
+                  if (localities.isNotEmpty)
+                    section('Locality', [
+                      for (final a in localities)
+                        pill(a, areas.contains(a), () {
+                          setSheet(() => areas.contains(a)
+                              ? areas.remove(a)
+                              : areas.add(a));
+                        }),
+                    ]),
 
                   // ---- Property Type (multi) ---------------------------
                   if (cfg.types.length > 1)
@@ -725,6 +742,7 @@ Future<PropertyFilter?> showFilterSheet(
                           gender: gender,
                           stayType: stayType,
                           guests: guests,
+                          areas: areas,
                           sort: current.sort,
                         ),
                       ),

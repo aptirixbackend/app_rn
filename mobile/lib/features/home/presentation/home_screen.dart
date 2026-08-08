@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/auth/mock_auth.dart';
 import '../../../core/location/city_picker.dart';
 import '../../../core/location/city_store.dart';
 import '../../../core/theme/app_colors.dart';
@@ -137,9 +138,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   style: GoogleFonts.poppins(
                       fontSize: 17, fontWeight: FontWeight.w700),
                   children: const [
-                    TextSpan(text: 'Home', style: TextStyle(color: AppColors.ink)),
+                    TextSpan(text: 'Rento', style: TextStyle(color: AppColors.ink)),
                     TextSpan(
-                        text: 'Vista', style: TextStyle(color: AppColors.primary)),
+                        text: 'Rent', style: TextStyle(color: AppColors.primary)),
                   ],
                 ),
               ),
@@ -166,14 +167,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const Spacer(),
           const NotificationBell(),
           const SizedBox(width: 4),
-          GestureDetector(
-            onTap: () => context.go('/profile'),
-            child: const CircleAvatar(
-              radius: 18,
-              backgroundColor: AppColors.primarySoft,
-              child: Icon(Icons.person, color: AppColors.primary, size: 20),
-            ),
-          ),
+          Builder(builder: (context) {
+            final avatar = ref.watch(userAvatarProvider).asData?.value;
+            final hasAvatar = avatar != null && avatar.isNotEmpty;
+            return GestureDetector(
+              onTap: () => context.go('/profile'),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primarySoft,
+                backgroundImage: hasAvatar ? NetworkImage(avatar) : null,
+                child: hasAvatar
+                    ? null
+                    : const Icon(Icons.person,
+                        color: AppColors.primary, size: 20),
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -304,7 +313,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
                     onTap: () => context.push('/search',
-                        extra: PropertyFilter(area: a)),
+                        extra: PropertyFilter(areas: {a})),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
@@ -842,7 +851,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final area = top[i];
               return GestureDetector(
                 onTap: () => context.push('/search',
-                    extra: PropertyFilter(area: area)),
+                    extra: PropertyFilter(areas: {area})),
                 child: Container(
                   width: 132,
                   margin: const EdgeInsets.only(right: 12),

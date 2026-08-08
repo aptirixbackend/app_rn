@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/mock_auth.dart';
@@ -21,17 +22,53 @@ class ProfileScreen extends ConsumerWidget {
       ..showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 
+  /// Pick a photo, upload it, and set it as the user's avatar everywhere.
+  Future<void> _pickAndSetAvatar(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final x = await ImagePicker().pickImage(
+        source: ImageSource.gallery, imageQuality: 80, maxWidth: 800);
+    if (x == null) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Uploading photo…')));
+    try {
+      final bytes = await x.readAsBytes();
+      final repo = ref.read(propertyRepositoryProvider);
+      final auth = ref.read(mockAuthProvider);
+      final uid = await auth.userId();
+      final url = await repo.uploadMedia(bytes, 'avatar_$uid.jpg');
+      if (url == null || url.isEmpty) throw Exception('upload failed');
+      // Cache-bust so a re-upload to the same path refreshes on screen.
+      final clean = url.endsWith('?') ? url.substring(0, url.length - 1) : url;
+      final busted = '$clean?v=${DateTime.now().millisecondsSinceEpoch}';
+      await auth.setProfile(avatar: busted);
+      ref.invalidate(userAvatarProvider);
+      try {
+        await repo.updateMyProfile({'avatar_url': busted}); // best-effort DB save
+      } catch (_) {}
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('Profile photo updated')));
+    } catch (_) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+            const SnackBar(content: Text('Could not upload photo. Try again.')));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isOwner = ref.watch(userRoleProvider).asData?.value == 'owner';
     final storedName = ref.watch(userNameProvider).asData?.value;
     final name = (storedName != null && storedName.trim().isNotEmpty)
         ? storedName.trim()
-        : 'HomeVista User';
+        : 'RentoRent User';
     final email = ref.watch(userEmailProvider).asData?.value ?? '';
     final phoneRaw = ref.watch(userPhoneProvider).asData?.value ?? '';
     final phone = (phoneRaw.isEmpty || phoneRaw == 'google') ? '' : phoneRaw;
     final city = ref.watch(userCityProvider).asData?.value ?? '';
+    final avatar = ref.watch(userAvatarProvider).asData?.value;
 
     final savedCount = ref.watch(favoriteIdsProvider).asData?.value.length ?? 0;
     final visitCount = ref.watch(myVisitsProvider).asData?.value.length ?? 0;
@@ -56,7 +93,8 @@ class ProfileScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _profileCard(context, isOwner, name, phone, email, city),
+                    _profileCard(
+                        context, ref, isOwner, name, phone, email, city, avatar),
                     const SizedBox(height: 18),
                     if (isOwner)
                       ..._ownerBody(
@@ -108,8 +146,9 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _profileCard(BuildContext context, bool isOwner, String name,
-      String phone, String email, String city) {
+  Widget _profileCard(BuildContext context, WidgetRef ref, bool isOwner,
+      String name, String phone, String email, String city, String? avatar) {
+    final hasAvatar = avatar != null && avatar.isNotEmpty;
     return GestureDetector(
       onTap: () => context.push('/edit-profile'),
       child: Container(
@@ -125,32 +164,39 @@ class ProfileScreen extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 34,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                child: Text(name.isNotEmpty ? name[0] : 'U',
-                    style: GoogleFonts.poppins(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2)),
-                  child: const Icon(Icons.camera_alt_rounded,
-                      size: 12, color: Colors.white),
+          GestureDetector(
+            onTap: () => _pickAndSetAvatar(context, ref),
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  backgroundImage:
+                      hasAvatar ? NetworkImage(avatar) : null,
+                  child: hasAvatar
+                      ? null
+                      : Text(name.isNotEmpty ? name[0] : 'U',
+                          style: GoogleFonts.poppins(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary)),
                 ),
-              ),
-            ],
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2)),
+                    child: const Icon(Icons.camera_alt_rounded,
+                        size: 12, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(

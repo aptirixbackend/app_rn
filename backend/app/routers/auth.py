@@ -10,9 +10,13 @@ from ..otp_auth import (
     issue_jwt,
     new_code,
     normalize_phone,
+    phone_in_use,
+    set_user_phone,
     store_code,
     upsert_user,
+    upsert_user_by_email,
     verify_code,
+    verify_google_token,
 )
 from ..otp_delivery import deliver_otp, verify_hook_signature
 
@@ -24,6 +28,15 @@ class PhoneIn(BaseModel):
 
 
 class VerifyIn(BaseModel):
+    phone: str
+    code: str
+
+
+class GoogleIn(BaseModel):
+    id_token: str
+
+
+class AttachPhoneIn(BaseModel):
     phone: str
     code: str
 
@@ -70,6 +83,58 @@ def verify_otp(body: VerifyIn):
             "phone": user.get("phone"),
             "name": user.get("first_name"),
             "onboarded": user.get("onboarding_completed", False),
+        },
+    }
+
+
+@router.post("/google")
+def google_signin(body: GoogleIn):
+    """Backend-owned Google Sign-In: verify the Google ID token, find/create the
+    user by email, and return the app's own session JWT."""
+    info = verify_google_token(body.id_token)
+    if not info:
+        raise HTTPException(status_code=401, detail="Invalid Google sign-in")
+    email = (info.get("email") or "").strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Google account has no email")
+    user = upsert_user_by_email(email, info.get("name"), info.get("picture"))
+    token = issue_jwt(str(user["id"]), user.get("phone") or "")
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user["id"],
+            "phone": user.get("phone"),
+            "name": user.get("first_name"),
+            "email": user.get("email"),
+            "avatar": user.get("avatar_url"),
+            # First-time Google users have no phone yet — the app must verify one
+            # before letting them into Home.
+            "needs_phone": not (user.get("phone") or "").strip(),
+            "onboarded": user.get("onboarding_completed", False),
+        },
+    }
+
+
+@router.post("/attach-phone")
+def attach_phone(body: AttachPhoneIn, user: dict = Depends(get_current_user)):
+    """Verify and attach a phone number to the signed-in (e.g. Google) user."""
+    phone = normalize_phone(body.phone)
+    if not verify_code(phone, body.code):
+        raise HTTPException(status_code=401, detail="Invalid or expired code")
+    if phone_in_use(phone, str(user["id"])):
+        raise HTTPException(
+            status_code=409,
+            detail="This number is already registered — sign in with it instead",
+        )
+    updated = set_user_phone(str(user["id"]), phone)
+    return {
+        "user": {
+            "id": updated.get("id"),
+            "phone": updated.get("phone"),
+            "name": updated.get("first_name"),
+            "email": updated.get("email"),
+            "onboarded": updated.get("onboarding_completed", False),
         },
     }
 

@@ -11,6 +11,8 @@ class PropertyDraftIn(BaseModel):
     purpose: str
     city: Optional[str] = None
     area: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     bhk: Optional[str] = None
     bathrooms: Optional[int] = None
     carpet_area: Optional[float] = None

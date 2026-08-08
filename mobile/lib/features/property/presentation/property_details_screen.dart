@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../core/location/city_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/property_repository.dart';
+import 'location_picker_screen.dart';
 import 'widgets/posting_widgets.dart';
 
 const _types = <(String, IconData)>[
@@ -123,7 +126,23 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   bool _loading = false;
 
   String _city = kCities.first;
+  LatLng? _pin; // exact pinned location on the map
   final _localityCtrl = TextEditingController();
+
+  LatLng _cityCenterLL(String c) {
+    final (lat, lng) = cityCenter(c);
+    return LatLng(lat, lng);
+  }
+
+  Future<void> _pickLocation() async {
+    final result = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) =>
+            LocationPickerScreen(initial: _pin ?? _cityCenterLL(_city)),
+      ),
+    );
+    if (result != null && mounted) setState(() => _pin = result);
+  }
 
   final _carpetCtrl = TextEditingController(text: '950');
   final _floorCtrl = TextEditingController(text: '5');
@@ -136,6 +155,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
   void initState() {
     super.initState();
     _city = ref.read(selectedCityProvider);
+    _pin = _cityCenterLL(_city);
   }
 
   /// Which type-specific field set to show/collect.
@@ -229,6 +249,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
           propertyType: _canonicalType(),
           purpose: _canonicalPurpose(),
           city: _city,
+          latitude: _pin?.latitude,
+          longitude: _pin?.longitude,
           area: _localityCtrl.text.trim().isEmpty
               ? null
               : _localityCtrl.text.trim(),
@@ -381,7 +403,10 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
           const SizedBox(height: 10),
           _twoUp(
             _dropdown('City', _city, kCities, Icons.location_city_outlined,
-                (v) => setState(() => _city = v!)),
+                (v) => setState(() {
+                      _city = v!;
+                      _pin = _cityCenterLL(_city); // re-centre the pin
+                    })),
             _labeled(
               'Locality',
               TextField(
@@ -395,6 +420,8 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 14),
+          _labeled('Pin exact location', _mapPickTile()),
           const SizedBox(height: 18),
           ..._typeSpecificFields(),
         ],
@@ -762,6 +789,82 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
             style: GoogleFonts.poppins(
                 fontSize: 13.5,
                 color: has ? AppColors.ink : AppColors.inkSoft)),
+      ),
+    );
+  }
+
+  Widget _mapPickTile() {
+    final pin = _pin;
+    return GestureDetector(
+      onTap: _pickLocation,
+      child: Container(
+        height: 150,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (pin != null)
+              IgnorePointer(
+                child: FlutterMap(
+                  // Rebuild the preview whenever the pin moves.
+                  key: ValueKey('${pin.latitude},${pin.longitude}'),
+                  options: MapOptions(
+                    initialCenter: pin,
+                    initialZoom: 14.5,
+                    interactionOptions:
+                        const InteractionOptions(flags: InteractiveFlag.none),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.realestate.homevista',
+                    ),
+                    MarkerLayer(markers: [
+                      Marker(
+                        point: pin,
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.topCenter,
+                        child: const Icon(Icons.location_on,
+                            color: AppColors.primary, size: 36),
+                      ),
+                    ]),
+                  ],
+                ),
+              ),
+            Positioned(
+              right: 10,
+              bottom: 10,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.edit_location_alt_outlined,
+                        size: 15, color: AppColors.primary),
+                    const SizedBox(width: 5),
+                    Text('Adjust pin',
+                        style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

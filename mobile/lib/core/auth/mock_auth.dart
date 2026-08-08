@@ -17,6 +17,8 @@ final userPhoneProvider =
     FutureProvider<String?>((ref) => ref.read(mockAuthProvider).phone());
 final userCityProvider =
     FutureProvider<String?>((ref) => ref.read(mockAuthProvider).city());
+final userAvatarProvider =
+    FutureProvider<String?>((ref) => ref.read(mockAuthProvider).avatar());
 
 /// Temporary local auth for development — no SMS needed.
 /// OTP is a fixed [demoOtp]. Login + "onboarding done" flags persist locally
@@ -41,6 +43,7 @@ class MockAuth {
   static const _kUserId = 'mock_user_id';
   static const _kEmail = 'mock_email';
   static const _kCity = 'mock_city';
+  static const _kAvatar = 'mock_avatar';
 
   /// Stable per-device id used as the customer/user id for favorites,
   /// leads and visits until real auth is wired in.
@@ -67,6 +70,7 @@ class MockAuth {
   Future<String?> goal() async => (await _prefs).getString(_kGoal);
   Future<String?> email() async => (await _prefs).getString(_kEmail);
   Future<String?> city() async => (await _prefs).getString(_kCity);
+  Future<String?> avatar() async => (await _prefs).getString(_kAvatar);
 
   /// Update editable profile fields (Edit Profile screen).
   Future<void> setProfile({
@@ -74,12 +78,14 @@ class MockAuth {
     String? email,
     String? phone,
     String? city,
+    String? avatar,
   }) async {
     final p = await _prefs;
     if (name != null) await p.setString(_kName, name);
     if (email != null) await p.setString(_kEmail, email);
     if (phone != null) await p.setString(_kPhone, phone);
     if (city != null) await p.setString(_kCity, city);
+    if (avatar != null) await p.setString(_kAvatar, avatar);
   }
 
   Future<void> login(String phone) async {

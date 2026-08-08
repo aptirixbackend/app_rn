@@ -39,8 +39,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Future<void> _filters() async {
-    final f = await showFilterSheet(context, _filter);
+    final f =
+        await showFilterSheet(context, _filter, localities: _localities());
     if (f != null) setState(() => _filter = f);
+  }
+
+  /// Distinct localities in the current (city-scoped) data, for the filter's
+  /// multi-select Locality section.
+  List<String> _localities() {
+    final rows = ref.read(visiblePropertiesProvider).asData?.value ?? const [];
+    final set = <String>{
+      for (final r in rows) (r['area'] ?? '').toString().trim()
+    }..removeWhere((e) => e.isEmpty);
+    return set.toList()..sort();
   }
 
   @override

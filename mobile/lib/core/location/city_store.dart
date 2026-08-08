@@ -13,6 +13,11 @@ const _cityCenters = <String, (double, double)>{
   'Mumbai': (19.0760, 72.8777),
 };
 
+/// Approx centre `(lat, lng)` of a served city — used to seed the posting
+/// map pin. Falls back to the first city for anything unknown.
+(double, double) cityCenter(String city) =>
+    _cityCenters[city] ?? _cityCenters[kCities.first]!;
+
 const _kCity = 'selected_city';
 
 /// The city selected in the top bar — drives every city-scoped listing feed.
@@ -26,7 +31,14 @@ class SelectedCity extends Notifier<String> {
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
     final c = p.getString(_kCity);
-    if (c != null && c.isNotEmpty) state = c;
+    if (c != null && c.isNotEmpty) {
+      state = c; // returning user — keep their last city
+    } else {
+      // First launch → auto-detect the nearest city from GPS. Once set, it's
+      // persisted, so later launches use the saved city (and it survives
+      // navigation via this app-scoped provider).
+      await detectNearestCity();
+    }
   }
 
   Future<void> set(String city) async {

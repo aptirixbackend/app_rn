@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
@@ -49,14 +50,51 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     return LatLng(la / pins.length, ln / pins.length);
   }
 
-  void _soon() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Coming soon')));
+  /// Centre the map on the device's current GPS location.
+  Future<void> _goToMyLocation() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Turn on location services')));
+        return;
+      }
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        messenger.showSnackBar(
+            const SnackBar(content: Text('Location permission denied')));
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      _mapCtrl.move(LatLng(pos.latitude, pos.longitude), 15);
+    } catch (_) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Could not get your location')));
+    }
+  }
+
+  /// Zoom back out to fit all the visible property pins.
+  void _recenterAll() {
+    try {
+      _mapCtrl.move(_center, 12.2);
+    } catch (_) {}
   }
 
   Future<void> _openFilters() async {
-    final f = await showFilterSheet(context, _filter);
+    final rows = ref.read(visiblePropertiesProvider).asData?.value ?? const [];
+    final localities = (<String>{
+      for (final r in rows) (r['area'] ?? '').toString().trim()
+    }..removeWhere((e) => e.isEmpty))
+        .toList()
+      ..sort();
+    final f = await showFilterSheet(context, _filter, localities: localities);
     if (f != null) setState(() => _filter = f);
   }
 
@@ -118,9 +156,10 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
                         bottom: 178,
                         child: Column(
                           children: [
-                            _mapBtn(Icons.my_location_rounded),
+                            _mapBtn(Icons.my_location_rounded,
+                                _goToMyLocation),
                             const SizedBox(height: 10),
-                            _mapBtn(Icons.layers_outlined),
+                            _mapBtn(Icons.zoom_out_map_rounded, _recenterAll),
                           ],
                         ),
                       ),
@@ -225,8 +264,8 @@ class _MapViewScreenState extends ConsumerState<MapViewScreen> {
     );
   }
 
-  Widget _mapBtn(IconData icon) => GestureDetector(
-        onTap: _soon,
+  Widget _mapBtn(IconData icon, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
         child: Container(
           width: 44,
           height: 44,

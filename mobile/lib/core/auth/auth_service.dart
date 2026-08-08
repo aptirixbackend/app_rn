@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../network/api_client.dart';
+import 'auth_config.dart';
 import 'mock_auth.dart';
 import 'token_store.dart';
 
@@ -50,7 +52,72 @@ class AuthService {
     return (user['onboarded'] as bool?) ?? false;
   }
 
+  /// Google Sign-In. Gets a Google ID token, exchanges it at the backend for
+  /// the app's session JWT, and returns the `user` map (which carries
+  /// `needs_phone` and `onboarded`), or null if the user cancelled the picker.
+  ///
+  /// First-time Google users have no phone yet: we store the token (so the
+  /// phone-verify step can call the backend) but do NOT mark the session as
+  /// logged-in until the phone is verified via [attachPhone].
+  Future<Map<String, dynamic>?> signInWithGoogle() async {
+    final gsi = GoogleSignIn(
+      serverClientId: googleWebClientId,
+      scopes: const ['email', 'profile'],
+    );
+    await gsi.signOut(); // always show the account picker
+    final account = await gsi.signIn();
+    if (account == null) return null; // cancelled
+    final gAuth = await account.authentication;
+    final idToken = gAuth.idToken;
+    if (idToken == null) throw StateError('No Google ID token');
+
+    final res = await _api.post('/auth/google', data: {'id_token': idToken});
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final token = data['access_token'] as String?;
+    final user = data['user'] is Map
+        ? Map<String, dynamic>.from(data['user'] as Map)
+        : <String, dynamic>{};
+    if (token == null || token.isEmpty) {
+      throw StateError('No session token returned');
+    }
+    await _tokens.write(token);
+    await _mock.setProfile(
+      name: user['name']?.toString(),
+      email: user['email']?.toString(),
+      avatar: user['avatar']?.toString(),
+    );
+    if (user['needs_phone'] != true) {
+      await _mock.setSession(
+        userId: user['id']?.toString(),
+        phone: user['phone']?.toString(),
+        name: user['name']?.toString(),
+      );
+    }
+    return user;
+  }
+
+  /// Verify + attach a phone to the signed-in (Google) user, then complete the
+  /// session. Returns whether onboarding is done. Throws (Dio 401/409) on a bad
+  /// code or an already-registered number.
+  Future<bool> attachPhone(String phoneE164, String code) async {
+    final res = await _api
+        .post('/auth/attach-phone', data: {'phone': phoneE164, 'code': code});
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final user = data['user'] is Map
+        ? Map<String, dynamic>.from(data['user'] as Map)
+        : <String, dynamic>{};
+    await _mock.setSession(
+      userId: user['id']?.toString(),
+      phone: user['phone']?.toString() ?? phoneE164,
+      name: user['name']?.toString(),
+    );
+    return (user['onboarded'] as bool?) ?? false;
+  }
+
   Future<void> signOut() async {
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
     await _tokens.write(null);
     await _mock.logout();
   }

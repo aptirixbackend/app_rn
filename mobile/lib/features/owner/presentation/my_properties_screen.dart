@@ -132,7 +132,7 @@ class _MyPropertiesScreenState extends ConsumerState<MyPropertiesScreen> {
                 child: Icon(Icons.person_add_alt_1_rounded,
                     color: AppColors.inkSoft, size: 20),
               ),
-              title: Text('Someone outside HomeVista',
+              title: Text('Someone outside RentoRent',
                   style: GoogleFonts.poppins(
                       fontSize: 13.5, fontWeight: FontWeight.w600)),
               subtitle: Text('Enter their name',

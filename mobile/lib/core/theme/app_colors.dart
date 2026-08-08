@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// HOMELY brand palette (derived from the UI design).
+/// RentoRent brand palette (derived from the UI design).
 class AppColors {
   static const primary = Color(0xFF5B4EE8); // indigo/violet
   static const primaryDark = Color(0xFF4A3FD0);
