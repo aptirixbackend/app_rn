@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/auth/auth_config.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/mock_auth.dart';
+import '../../../core/auth/session_reset.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/shake_widget.dart';
 import 'widgets/otp_input_field.dart';
@@ -108,9 +109,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         _flagWrongOtp('Invalid or expired code. Please try again.');
         return;
       }
-      ref
-        ..invalidate(userRoleProvider)
-        ..invalidate(userNameProvider);
+      invalidateUserData(ref);
       if (mounted) {
         setState(() => _loading = false);
         context.go(onboarded ? '/home' : '/onboarding');

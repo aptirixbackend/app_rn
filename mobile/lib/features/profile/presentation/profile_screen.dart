@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/mock_auth.dart';
+import '../../../core/auth/session_reset.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../engagement/data/engagement_repository.dart';
@@ -644,10 +645,10 @@ class ProfileScreen extends ConsumerWidget {
   Widget _logout(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: () async {
-        // Clears the backend JWT and the local session together.
+        // Clears the backend JWT + the entire local session, and drops all
+        // cached per-user data so nothing leaks to the next login.
         await ref.read(authServiceProvider).signOut();
-        ref.invalidate(userRoleProvider);
-        ref.invalidate(userNameProvider);
+        invalidateUserData(ref);
         if (context.mounted) context.go('/sign-in');
       },
       child: Container(

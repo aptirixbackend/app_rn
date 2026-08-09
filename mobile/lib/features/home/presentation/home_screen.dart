@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/auth/mock_auth.dart';
 import '../../../core/location/city_picker.dart';
 import '../../../core/location/city_store.dart';
+import '../../../core/notifications/push_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
 import '../../notifications/presentation/notification_bell.dart';
@@ -76,6 +77,16 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _cat = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // The user is authenticated by the time they reach Home — register this
+    // device for push (idempotent).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(pushServiceProvider).start();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

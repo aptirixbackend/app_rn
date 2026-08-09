@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "893662637688",
+    "project_id": "rentorent-d266d",
+    "storage_bucket": "rentorent-d266d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:893662637688:android:317e3a586ea42da691078d",
+        "android_client_info": {
+          "package_name": "com.realestate.real_estate_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyMVhkb_-1vD5CyREji6_H8AUOtXAHTLs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

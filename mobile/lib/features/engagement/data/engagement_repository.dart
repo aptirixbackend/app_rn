@@ -1,21 +1,36 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/auth/mock_auth.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/notifications/notif_read_store.dart';
 
 final engagementRepositoryProvider = Provider<EngagementRepository>(
-  (ref) => EngagementRepository(ref.read(mockAuthProvider)),
+  (ref) =>
+      EngagementRepository(ref.read(mockAuthProvider), ref.read(apiClientProvider)),
 );
 
 /// Favorites, leads (enquiries) and site visits. Persists to Supabase directly
 /// (dev-permissive RLS), keyed by the local mock user id. Moves behind FastAPI +
 /// real auth later.
 class EngagementRepository {
-  EngagementRepository(this._auth);
+  EngagementRepository(this._auth, this._api);
   final MockAuth _auth;
+  final Dio _api;
 
   SupabaseClient get _c => Supabase.instance.client;
+
+  /// Fire-and-forget push trigger: the backend reads the record and pushes the
+  /// right message to the right user (gated by their notification settings).
+  void _notify(String path, String? id) {
+    if (id == null || id.isEmpty) return;
+    () async {
+      try {
+        await _api.post(path, data: {'id': id});
+      } catch (_) {}
+    }();
+  }
 
   List<Map<String, dynamic>> _rows(dynamic data) =>
       (data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -83,7 +98,7 @@ class EngagementRepository {
         ? await base.eq('kind', 'booking').limit(1)
         : await base.neq('kind', 'booking').limit(1);
     if ((existing as List).isNotEmpty) return false;
-    await _c.from('leads_home').insert({
+    final ins = await _c.from('leads_home').insert({
       'property_id': propertyId,
       'owner_id': ownerId,
       'customer_id': uid,
@@ -91,7 +106,8 @@ class EngagementRepository {
       'customer_phone': (await _auth.phone()) ?? '',
       'kind': kind,
       'message': message,
-    });
+    }).select('id').single();
+    _notify('/notify/lead', ins['id']?.toString()); // push the owner
     return true;
   }
 
@@ -117,10 +133,12 @@ class EngagementRepository {
 
   Future<void> updateLeadStatus(String leadId, String status) async {
     await _c.from('leads_home').update({'status': status}).eq('id', leadId);
+    _notify('/notify/lead-status', leadId); // push the customer
   }
 
   Future<void> updateVisitStatus(String visitId, String status) async {
     await _c.from('visits_home').update({'status': status}).eq('id', visitId);
+    _notify('/notify/visit-status', visitId); // push the customer
   }
 
   // ---- activity tracking -------------------------------------------------
@@ -162,7 +180,7 @@ class EngagementRepository {
         .eq('customer_id', uid)
         .limit(1);
     if ((existing as List).isNotEmpty) return false;
-    await _c.from('visits_home').insert({
+    final ins = await _c.from('visits_home').insert({
       'property_id': propertyId,
       'owner_id': ownerId,
       'customer_id': uid,
@@ -170,7 +188,8 @@ class EngagementRepository {
       'customer_phone': (await _auth.phone()) ?? '',
       'scheduled_for': date?.toIso8601String().split('T').first,
       'slot': slot,
-    });
+    }).select('id').single();
+    _notify('/notify/visit', ins['id']?.toString()); // push the owner
     return true;
   }
 

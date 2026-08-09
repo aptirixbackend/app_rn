@@ -105,6 +105,42 @@ class MockAuth {
     if (name != null && name.isNotEmpty) await p.setString(_kName, name);
   }
 
+  Future<void> _setOrRemove(
+      SharedPreferences p, String key, String? value) async {
+    if (value != null && value.isNotEmpty) {
+      await p.setString(key, value);
+    } else {
+      await p.remove(key);
+    }
+  }
+
+  /// Replace the whole local session with a specific user's details. Every
+  /// profile field is set-or-cleared so NOTHING from a previous user leaks in
+  /// (fixes cross-account data bleed). Set [loggedIn] false while a Google user
+  /// still has to verify a phone.
+  Future<void> replaceSession({
+    String? userId,
+    String? phone,
+    String? name,
+    String? email,
+    String? avatar,
+    String? city,
+    String? goal,
+    bool onboarded = false,
+    bool loggedIn = true,
+  }) async {
+    final p = await _prefs;
+    await p.setBool(_kLoggedIn, loggedIn);
+    await p.setBool(_kOnboarded, onboarded);
+    await _setOrRemove(p, _kUserId, userId);
+    await _setOrRemove(p, _kPhone, phone);
+    await _setOrRemove(p, _kName, name);
+    await _setOrRemove(p, _kEmail, email);
+    await _setOrRemove(p, _kAvatar, avatar);
+    await _setOrRemove(p, _kCity, city);
+    await _setOrRemove(p, _kGoal, goal);
+  }
+
   Future<void> setGoal(String goal) async =>
       (await _prefs).setString(_kGoal, goal);
 
@@ -127,12 +163,21 @@ class MockAuth {
     if (name != null && name.isNotEmpty) await p.setString(_kName, name);
   }
 
+  /// Full wipe of the local session so no data carries over to the next user.
   Future<void> logout() async {
     final p = await _prefs;
-    await p.remove(_kLoggedIn);
-    await p.remove(_kOnboarded);
-    await p.remove(_kPhone);
-    await p.remove(_kName);
-    await p.remove(_kGoal);
+    for (final k in [
+      _kLoggedIn,
+      _kOnboarded,
+      _kPhone,
+      _kName,
+      _kGoal,
+      _kEmail,
+      _kCity,
+      _kAvatar,
+      _kUserId,
+    ]) {
+      await p.remove(k);
+    }
   }
 }

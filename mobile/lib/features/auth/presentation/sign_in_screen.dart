@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/auth/auth_config.dart';
 import '../../../core/auth/auth_service.dart';
 import '../../../core/auth/mock_auth.dart';
+import '../../../core/auth/session_reset.dart';
 import '../../../core/theme/app_colors.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -70,6 +71,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         if (!mounted) return;
         setState(() => _loading = false);
         if (user == null) return; // user cancelled the picker
+        invalidateUserData(ref); // drop any previous user's cached data
         if (user['needs_phone'] == true) {
           // First-time Google user — verify a phone before Home.
           context.push('/verify-phone');
@@ -87,6 +89,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final auth = ref.read(mockAuthProvider);
     await auth.login('google');
     final onboarded = await auth.isOnboarded();
+    invalidateUserData(ref);
     if (mounted) {
       setState(() => _loading = false);
       context.go(onboarded ? '/home' : '/onboarding');

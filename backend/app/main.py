@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .routers import auth, properties, users
+from .routers import auth, notifications, properties, users
 
 app = FastAPI(title="AI Real Estate API", version="0.1.0")
 
@@ -25,3 +25,4 @@ def health():
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(properties.router)
+app.include_router(notifications.router)

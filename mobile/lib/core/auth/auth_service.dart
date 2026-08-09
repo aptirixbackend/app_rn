@@ -44,12 +44,38 @@ class AuthService {
       throw StateError('No session token returned');
     }
     await _tokens.write(token);
-    await _mock.setSession(
+    final onboarded = (user['onboarded'] as bool?) ?? false;
+    await _mock.replaceSession(
       userId: user['id']?.toString(),
       phone: user['phone']?.toString() ?? phoneE164,
       name: user['name']?.toString(),
+      onboarded: onboarded,
     );
-    return (user['onboarded'] as bool?) ?? false;
+    await _hydrate();
+    return onboarded;
+  }
+
+  /// Pull the full profile (name / email / avatar / goal) from the backend so
+  /// the UI reflects THIS user's DB record, never stale local data.
+  Future<void> _hydrate() async {
+    try {
+      final res = await _api.get('/me');
+      final profile = (res.data as Map)['profile'];
+      if (profile is! Map) return;
+      final p = Map<String, dynamic>.from(profile);
+      final full = [p['first_name'], p['last_name']]
+          .where((e) => (e ?? '').toString().trim().isNotEmpty)
+          .join(' ');
+      String? clean(Object? v) =>
+          (v ?? '').toString().isEmpty ? null : v.toString();
+      await _mock.setProfile(
+        name: full.isEmpty ? null : full,
+        email: clean(p['email']),
+        avatar: clean(p['avatar_url']),
+      );
+      final goal = (p['primary_goal'] ?? '').toString();
+      if (goal.isNotEmpty) await _mock.setGoal(goal);
+    } catch (_) {}
   }
 
   /// Google Sign-In. Gets a Google ID token, exchanges it at the backend for
@@ -81,18 +107,18 @@ class AuthService {
       throw StateError('No session token returned');
     }
     await _tokens.write(token);
-    await _mock.setProfile(
+    final needsPhone = user['needs_phone'] == true;
+    // Replace the whole session so a previous account's data is wiped. Don't
+    // mark "logged in" until the phone is verified for first-time Google users.
+    await _mock.replaceSession(
+      userId: user['id']?.toString(),
+      phone: user['phone']?.toString(),
       name: user['name']?.toString(),
       email: user['email']?.toString(),
       avatar: user['avatar']?.toString(),
+      onboarded: (user['onboarded'] as bool?) ?? false,
+      loggedIn: !needsPhone,
     );
-    if (user['needs_phone'] != true) {
-      await _mock.setSession(
-        userId: user['id']?.toString(),
-        phone: user['phone']?.toString(),
-        name: user['name']?.toString(),
-      );
-    }
     return user;
   }
 
@@ -106,12 +132,16 @@ class AuthService {
     final user = data['user'] is Map
         ? Map<String, dynamic>.from(data['user'] as Map)
         : <String, dynamic>{};
-    await _mock.setSession(
+    final onboarded = (user['onboarded'] as bool?) ?? false;
+    await _mock.replaceSession(
       userId: user['id']?.toString(),
       phone: user['phone']?.toString() ?? phoneE164,
       name: user['name']?.toString(),
+      email: user['email']?.toString(),
+      onboarded: onboarded,
     );
-    return (user['onboarded'] as bool?) ?? false;
+    await _hydrate();
+    return onboarded;
   }
 
   Future<void> signOut() async {

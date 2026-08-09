@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     otp_ttl_seconds: int = 600       # code valid for 10 minutes
     # Google Sign-In: the Web OAuth client id the mobile app requests tokens for.
     google_client_id: str = ""
+
+    # Firebase Cloud Messaging service-account JSON (as a string) for push. On
+    # Cloud Run set FCM_SERVICE_ACCOUNT; locally the code falls back to the
+    # git-ignored backend/fcm-service-account.json file.
+    fcm_service_account: str = ""
     otp_max_attempts: int = 5        # wrong tries before a code is dead
     otp_resend_seconds: int = 30     # min gap between sends to one number
 

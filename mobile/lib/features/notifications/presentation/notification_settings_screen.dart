@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 
 class _Item {
@@ -38,16 +40,16 @@ const _sections = <(String, List<_Item>)>[
   ]),
 ];
 
-class NotificationSettingsScreen extends StatefulWidget {
+class NotificationSettingsScreen extends ConsumerStatefulWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() =>
+  ConsumerState<NotificationSettingsScreen> createState() =>
       _NotificationSettingsScreenState();
 }
 
 class _NotificationSettingsScreenState
-    extends State<NotificationSettingsScreen> {
+    extends ConsumerState<NotificationSettingsScreen> {
   final Map<String, bool> _v = {};
   bool _loaded = false;
 
@@ -70,6 +72,12 @@ class _NotificationSettingsScreenState
   Future<void> _set(String key, bool val) async {
     setState(() => _v[key] = val);
     (await SharedPreferences.getInstance()).setBool(key, val);
+    // Mirror to the backend so server-sent pushes respect these toggles.
+    try {
+      await ref
+          .read(apiClientProvider)
+          .patch('/me/notif-settings', data: Map<String, bool>.from(_v));
+    } catch (_) {}
   }
 
   @override

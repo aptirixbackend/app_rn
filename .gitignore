@@ -9,6 +9,10 @@ key.json
 *.keystore
 gcp-*.json
 service-account*.json
+# Firebase Admin / FCM service-account key (backend push) — never commit
+*firebase-adminsdk*.json
+fcm-service-account.json
+backend/fcm-service-account.json
 
 # ---- Python / FastAPI ----
 __pycache__/
