@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../chat/presentation/chat_screen.dart';
 import '../../engagement/data/engagement_repository.dart';
 import '../data/property_repository.dart';
 import '../data/property_view.dart';
@@ -191,6 +192,24 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
         : "You've already enquired on this property");
   }
 
+  /// Open the in-app real-time chat with this property's owner, carrying the
+  /// listing as context so both sides know which home they're discussing.
+  void _messageOwner(PropertyView v, String? ownerId) {
+    if (ownerId == null || ownerId.isEmpty) {
+      _snack('Messaging is not available for this listing');
+      return;
+    }
+    context.push('/chat/$ownerId', extra: {
+      'name': v.postedBy.replaceAll(RegExp(r'\s*\(.*\)$'), ''),
+      'property': ChatProperty(
+        id: v.id,
+        title: v.title,
+        image: (v.raw['cover_image_url'] ?? '').toString(),
+        location: v.location,
+      ),
+    });
+  }
+
   /// Open the phone dialer with the owner's number and log the contact.
   Future<void> _callOwner(PropertyView v, String? ownerId) async {
     _enquire(v.id, ownerId, 'contact');
@@ -245,7 +264,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     final topRow = async.asData?.value;
     final topView = topRow != null ? PropertyView(topRow) : null;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: async.when(
@@ -1391,7 +1410,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          if (enquired)
+          if (enquired) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 11),
@@ -1412,20 +1431,21 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                           color: AppColors.prefGreen)),
                 ],
               ),
-            )
-          else
-            Row(
-              children: [
-                _contactBtn(Icons.chat_rounded, 'WhatsApp',
-                    () => _whatsappOwner(v, ownerId)),
-                const SizedBox(width: 8),
-                _contactBtn(Icons.call_outlined, 'Call',
-                    () => _callOwner(v, ownerId)),
-                const SizedBox(width: 8),
-                _contactBtn(Icons.mail_outline_rounded, 'Message',
-                    () => _enquire(v.id, ownerId, 'message')),
-              ],
             ),
+            const SizedBox(height: 10),
+          ],
+          Row(
+            children: [
+              _contactBtn(Icons.chat_rounded, 'WhatsApp',
+                  () => _whatsappOwner(v, ownerId)),
+              const SizedBox(width: 8),
+              _contactBtn(Icons.call_outlined, 'Call',
+                  () => _callOwner(v, ownerId)),
+              const SizedBox(width: 8),
+              _contactBtn(Icons.mail_outline_rounded, 'Message',
+                  () => _messageOwner(v, ownerId)),
+            ],
+          ),
         ],
       ),
     );

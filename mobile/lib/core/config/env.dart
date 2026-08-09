@@ -16,4 +16,13 @@ class Env {
     'API_BASE_URL',
     defaultValue: 'http://10.0.2.2:8000',
   );
+
+  /// WebSocket origin for the chat socket, derived from [apiBaseUrl]
+  /// (https→wss, http→ws). Cloud Run terminates TLS, so production is wss://.
+  static String get wsBaseUrl {
+    final u = apiBaseUrl;
+    if (u.startsWith('https://')) return 'wss://${u.substring(8)}';
+    if (u.startsWith('http://')) return 'ws://${u.substring(7)}';
+    return u;
+  }
 }

@@ -79,7 +79,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     final initial = _name.text.trim().isNotEmpty ? _name.text.trim()[0] : 'U';
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: !_loaded

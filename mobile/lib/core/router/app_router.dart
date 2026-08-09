@@ -5,6 +5,8 @@ import '../../features/auth/presentation/otp_verification_screen.dart';
 import '../../features/auth/presentation/phone_verification_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
 import '../../features/browse/presentation/segment_landing_screen.dart';
+import '../../features/chat/presentation/chat_screen.dart';
+import '../../features/chat/presentation/conversations_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/onboarding/presentation/about_you_screen.dart';
 import '../../features/engagement/presentation/enquiries_screen.dart';
@@ -187,6 +189,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ownerId: state.pathParameters['id']!,
           ownerName: state.extra as String?,
         ),
+      ),
+      GoRoute(
+        path: '/messages',
+        builder: (context, state) => const ConversationsScreen(),
+      ),
+      GoRoute(
+        path: '/chat/:userId',
+        builder: (context, state) {
+          final e = state.extra;
+          final m = e is Map ? e : const <String, dynamic>{};
+          return ChatScreen(
+            peerId: state.pathParameters['userId']!,
+            peerName: m['name'] as String?,
+            peerImage: m['image'] as String?,
+            property: m['property'] as ChatProperty?,
+          );
+        },
       ),
     ],
   );

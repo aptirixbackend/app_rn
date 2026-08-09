@@ -9,6 +9,7 @@ import '../../../core/location/city_store.dart';
 import '../../../core/notifications/push_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
+import '../../chat/presentation/messages_bell.dart';
 import '../../notifications/presentation/notification_bell.dart';
 import '../../property/data/property_filter.dart';
 import '../../property/data/property_repository.dart';
@@ -91,7 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -176,6 +177,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
           const Spacer(),
+          const MessagesBell(),
           const NotificationBell(),
           const SizedBox(width: 4),
           Builder(builder: (context) {

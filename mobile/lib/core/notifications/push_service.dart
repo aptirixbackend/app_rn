@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/api_client.dart';
 import '../router/app_router.dart';
+import '../../features/chat/data/chat_repository.dart';
 import '../../features/engagement/data/engagement_repository.dart';
 
 /// Registers this device's FCM token with the backend (so it can push to the
@@ -23,8 +24,14 @@ class PushService {
       await _register(await fm.getToken());
       fm.onTokenRefresh.listen(_register);
 
-      FirebaseMessaging.onMessage.listen((_) {
-        // A push arrived while the app is open — refresh the activity feed.
+      FirebaseMessaging.onMessage.listen((m) {
+        // A push arrived while the app is open — refresh the relevant feed.
+        if ((m.data['type'] ?? '') == 'new_message') {
+          _ref
+            ..invalidate(chatUnreadProvider)
+            ..invalidate(conversationsProvider);
+          return;
+        }
         _ref
           ..invalidate(notificationCountProvider)
           ..invalidate(ownerLeadsProvider)
@@ -51,8 +58,14 @@ class PushService {
   }
 
   void _handleTap(RemoteMessage m) {
-    final propId = (m.data['property_id'] ?? '').toString();
     final router = _ref.read(appRouterProvider);
+    final type = (m.data['type'] ?? '').toString();
+    if (type == 'new_message') {
+      final sender = (m.data['sender_id'] ?? '').toString();
+      router.push(sender.isEmpty ? '/messages' : '/chat/$sender');
+      return;
+    }
+    final propId = (m.data['property_id'] ?? '').toString();
     if (propId.isNotEmpty) {
       router.push('/property/$propId');
     } else {

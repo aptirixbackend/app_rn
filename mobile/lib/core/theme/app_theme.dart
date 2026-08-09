@@ -19,7 +19,9 @@ class AppTheme {
 
     return base.copyWith(
       colorScheme: scheme,
-      scaffoldBackgroundColor: AppColors.scaffold,
+      // Transparent so the app-wide patterned canvas (AppBackground) shows
+      // through any Scaffold that doesn't set its own opaque background.
+      scaffoldBackgroundColor: Colors.transparent,
       textTheme: textTheme,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,

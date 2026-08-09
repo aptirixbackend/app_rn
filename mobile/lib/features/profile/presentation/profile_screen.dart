@@ -82,7 +82,7 @@ class ProfileScreen extends ConsumerWidget {
     final recentCount = ref.watch(seenIdsProvider).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -341,6 +341,9 @@ class ProfileScreen extends ConsumerWidget {
         _tile(context, Icons.groups_outlined, 'My Leads',
             'Track enquiries on your listings',
             onTap: () => context.push('/my-leads')),
+        _tile(context, Icons.chat_bubble_outline_rounded, 'Messages',
+            'Chat with interested buyers',
+            onTap: () => context.push('/messages')),
         _tile(context, Icons.notifications_none_rounded,
             'Notification Settings', 'Manage your notifications',
             onTap: () => context.push('/notification-settings')),
@@ -378,6 +381,9 @@ class ProfileScreen extends ConsumerWidget {
         _tile(context, Icons.chat_bubble_outline_rounded, 'Enquiries',
             'Track your property enquiries',
             onTap: () => context.push('/enquiries')),
+        _tile(context, Icons.forum_outlined, 'Messages',
+            'Chat with property owners',
+            onTap: () => context.push('/messages')),
       ]),
       const SizedBox(height: 16),
       Padding(

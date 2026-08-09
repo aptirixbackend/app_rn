@@ -20,6 +20,8 @@ const _sections = <(String, List<_Item>)>[
     _Item('notif_sms', 'SMS', 'Text-message alerts', false),
   ]),
   ('Activity', [
+    _Item('notif_messages', 'Messages',
+        'New chat messages from owners & buyers', true),
     _Item('notif_leads', 'New Leads',
         'When someone enquires about your property', true),
     _Item('notif_enquiries', 'Enquiry Updates',
@@ -83,7 +85,7 @@ class _NotificationSettingsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: Column(

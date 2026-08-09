@@ -178,3 +178,13 @@ def issue_jwt(user_id: str, phone: str) -> str:
         "exp": int((now + dt.timedelta(days=settings.auth_token_days)).timestamp()),
     }
     return jwt.encode(payload, settings.auth_jwt_secret, algorithm="HS256")
+
+
+def decode_token(token: str) -> dict | None:
+    """Verify one of our session JWTs and return its claims, or None. Used to
+    authenticate the chat WebSocket (the token is passed in the URL path, where
+    an Authorization header can't be set)."""
+    try:
+        return jwt.decode(token, settings.auth_jwt_secret, algorithms=["HS256"])
+    except jwt.PyJWTError:
+        return None
