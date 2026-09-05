@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/auth/session_reset.dart';
 import '../../../core/location/city_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/property_repository.dart';
@@ -285,6 +286,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+    await becomeOwner(ref); // listing a property makes them an owner
     if (mounted) {
       context.go('/post-property/pricing', extra: {
         'id': id,
@@ -303,6 +305,7 @@ class _PropertyDetailsScreenState extends ConsumerState<PropertyDetailsScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+    await becomeOwner(ref); // saving a draft makes them an owner too
     if (!mounted) return;
     ref.invalidate(myPropertiesProvider);
     ScaffoldMessenger.of(context)

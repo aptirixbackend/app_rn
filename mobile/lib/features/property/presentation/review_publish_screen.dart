@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/auth/session_reset.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/property_repository.dart';
 import 'widgets/posting_widgets.dart';
@@ -59,6 +60,7 @@ class _ReviewPublishScreenState extends ConsumerState<ReviewPublishScreen> {
     } finally {
       if (mounted) setState(() => _publishing = false);
     }
+    await becomeOwner(ref); // publishing a listing makes them an owner
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('🎉 Property published!')),
@@ -603,9 +605,12 @@ class _ReviewPublishScreenState extends ConsumerState<ReviewPublishScreen> {
           ),
           const SizedBox(height: 6),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              await becomeOwner(ref);
               ref.invalidate(myPropertiesProvider);
-              ScaffoldMessenger.of(context)
+              if (!mounted) return;
+              messenger
                 ..hideCurrentSnackBar()
                 ..showSnackBar(const SnackBar(
                     content:
